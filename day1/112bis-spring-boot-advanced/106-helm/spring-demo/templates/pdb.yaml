@@ -1,0 +1,17 @@
+{{- /* Module 111 */ -}}
+{{- if .Values.podDisruptionBudget.enabled }}
+{{- range $name := list "catalog" "order" }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ $.Release.Name }}-{{ $name }}
+  labels:
+    {{- include "spring-demo.labels" (dict "root" $ "name" $name) | nindent 4 }}
+spec:
+  minAvailable: {{ $.Values.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "spring-demo.selectorLabels" (dict "root" $ "name" $name) | nindent 6 }}
+{{- end }}
+{{- end }}

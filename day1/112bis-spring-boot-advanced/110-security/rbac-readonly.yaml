@@ -1,0 +1,29 @@
+# Module 110 : un compte "développeur en lecture seule" sur le namespace de l'application.
+#   kubectl -n spring-helm apply -f rbac-readonly.yaml
+#   kubectl -n spring-helm auth can-i list pods   --as=system:serviceaccount:spring-helm:dev-readonly   # yes
+#   kubectl -n spring-helm auth can-i get secrets --as=system:serviceaccount:spring-helm:dev-readonly   # no
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dev-readonly
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: readonly
+rules:
+  - apiGroups: ["", "apps", "networking.k8s.io", "autoscaling"]
+    resources: [pods, pods/log, services, deployments, replicasets, configmaps, ingresses, horizontalpodautoscalers, endpoints]
+    verbs: [get, list, watch]          # pas de secrets, pas de create/delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: dev-readonly
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: readonly
+subjects:
+  - kind: ServiceAccount
+    name: dev-readonly

@@ -1,0 +1,64 @@
+# Module 109 : dashboard Grafana auto-provisionné par le sidecar (label grafana_dashboard=1)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spring-demo-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  spring-demo.json: |
+    {
+      "title": "☕ spring-demo",
+      "uid": "spring-demo",
+      "timezone": "browser",
+      "refresh": "10s",
+      "schemaVersion": 39,
+      "time": { "from": "now-15m", "to": "now" },
+      "panels": [
+        {
+          "id": 1, "type": "stat", "title": "Commandes / min",
+          "gridPos": { "x": 0, "y": 0, "w": 6, "h": 5 },
+          "targets": [{ "expr": "sum(rate(orders_placed_total{outcome=\"success\"}[1m])) * 60", "refId": "A" }]
+        },
+        {
+          "id": 2, "type": "stat", "title": "Commandes refusées / min",
+          "gridPos": { "x": 6, "y": 0, "w": 6, "h": 5 },
+          "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "orange" } } },
+          "targets": [{ "expr": "sum(rate(orders_placed_total{outcome=\"rejected\"}[1m])) * 60", "refId": "A" }]
+        },
+        {
+          "id": 3, "type": "stat", "title": "Pods Ready (order)",
+          "gridPos": { "x": 12, "y": 0, "w": 6, "h": 5 },
+          "targets": [{ "expr": "sum(kube_deployment_status_replicas_available{deployment=~\".*-order\"})", "refId": "A" }]
+        },
+        {
+          "id": 4, "type": "stat", "title": "Taux d'erreur 5xx",
+          "gridPos": { "x": 18, "y": 0, "w": 6, "h": 5 },
+          "fieldConfig": { "defaults": { "unit": "percentunit" } },
+          "targets": [{ "expr": "sum(rate(http_server_requests_seconds_count{status=~\"5..\"}[2m])) / sum(rate(http_server_requests_seconds_count[2m]))", "refId": "A" }]
+        },
+        {
+          "id": 5, "type": "timeseries", "title": "Requêtes / s par service et statut",
+          "gridPos": { "x": 0, "y": 5, "w": 12, "h": 8 },
+          "targets": [{ "expr": "sum by (application, status) (rate(http_server_requests_seconds_count[1m]))", "legendFormat": "{{application}} {{status}}", "refId": "A" }]
+        },
+        {
+          "id": 6, "type": "timeseries", "title": "Latence p95",
+          "gridPos": { "x": 12, "y": 5, "w": 12, "h": 8 },
+          "fieldConfig": { "defaults": { "unit": "s" } },
+          "targets": [{ "expr": "histogram_quantile(0.95, sum by (le, application) (rate(http_server_requests_seconds_bucket[2m])))", "legendFormat": "{{application}}", "refId": "A" }]
+        },
+        {
+          "id": 7, "type": "timeseries", "title": "Heap JVM utilisée",
+          "gridPos": { "x": 0, "y": 13, "w": 12, "h": 8 },
+          "fieldConfig": { "defaults": { "unit": "bytes" } },
+          "targets": [{ "expr": "sum by (pod) (jvm_memory_used_bytes{area=\"heap\"})", "legendFormat": "{{pod}}", "refId": "A" }]
+        },
+        {
+          "id": 8, "type": "timeseries", "title": "CPU par Pod",
+          "gridPos": { "x": 12, "y": 13, "w": 12, "h": 8 },
+          "targets": [{ "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{pod=~\".*-(catalog|order)-.*\", container!=\"\"}[2m]))", "legendFormat": "{{pod}}", "refId": "A" }]
+        }
+      ]
+    }

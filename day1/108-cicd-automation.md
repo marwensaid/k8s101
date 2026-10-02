@@ -31,6 +31,7 @@
 - [🩺 Dépannage](#-dépannage)
 - [📝 Mémo](#-mémo)
 - [✅ Checklist](#-checklist)
+- [☕ Fil rouge Spring Boot](#-fil-rouge-spring-boot)
 
 ---
 
@@ -581,6 +582,26 @@ jobs:
 - [ ] Une image Docker est poussée sur `ghcr.io` taggée avec le `sha`
 - [ ] `helm upgrade --install --atomic` déploie depuis la CI
 - [ ] Je sais expliquer CI vs livraison continue vs déploiement continu
+
+## ☕ Fil rouge Spring Boot
+
+> Suite du [fil rouge Spring Boot](105bis-spring-boot.md) : tout est dans [`112bis-spring-boot-advanced/`](112bis-spring-boot-advanced/) et s'exécute avec `./deploy.sh <module>` (`deploy`, `test`, `clean` ou les deux par défaut). Prérequis : `./deploy.sh build` une fois, puis `./deploy.sh 106`.
+
+Le workflow [`.github/workflows/spring-demo.yml`](../.github/workflows/spring-demo.yml) enchaîne pour les deux services : **tests Maven** (matrice), **lint infra** (`helm lint`, `helm template`, `terraform validate`), **build & push** des images sur GHCR, puis **scan Trivy**. Détails dans [`108-cicd/README.md`](112bis-spring-boot-advanced/108-cicd/README.md).
+
+```bash
+cd day1/112bis-spring-boot-advanced
+./deploy.sh 108            # rejoue les jobs de la CI en local : mvn verify ×2, helm lint/template, tf validate, YAML du workflow
+```
+
+**À faire vous-même :** poussez ce dépôt sur GitHub, ouvrez l'onglet *Actions*, puis modifiez `ProductController` pour casser un test et observez le job rouge. Une fois les images publiées sur `ghcr.io/<vous>/catalog-service`, déployez-les avec :
+
+```bash
+helm upgrade --install demo 106-helm/spring-demo -n spring-helm \
+  --set catalog.image.repository=ghcr.io/<vous>/catalog-service \
+  --set order.image.repository=ghcr.io/<vous>/order-service \
+  --set catalog.image.tag=<sha> --set order.image.tag=<sha> --atomic
+```
 
 <div align="center">
 

@@ -1,0 +1,8 @@
+# Environnement de production : plus de réplicas, toutes les briques des modules 109 → 112
+catalog: { replicaCount: 3, env: { CATALOG_ENVIRONMENT: prod } }
+order:   { replicaCount: 3 }
+ingress: { host: spring.example.com }
+metrics: { serviceMonitor: { enabled: true }, prometheusRule: { enabled: true } }
+security: { hardened: true, serviceAccount: { create: true }, networkPolicy: { enabled: true } }
+podDisruptionBudget: { enabled: true, minAvailable: 1 }
+postgres: { enabled: true, storage: 20Gi }

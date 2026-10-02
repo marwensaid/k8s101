@@ -1,0 +1,26 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}-spring-demo
+  labels:
+    {{- include "spring-demo.labels" (dict "root" . "name" "spring-demo") | nindent 4 }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          - path: /api/products
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-catalog
+                port: { name: http }
+          - path: /api/orders
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-order
+                port: { name: http }
+{{- end }}

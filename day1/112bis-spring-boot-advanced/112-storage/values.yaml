@@ -1,0 +1,8 @@
+# Module 112 : une vraie base de données pour les commandes.
+# postgres.enabled déclenche dans le chart : Secret + Service headless + StatefulSet (volumeClaimTemplates)
+# et injecte SPRING_DATASOURCE_URL / USERNAME / PASSWORD dans order-service → fini H2, sans toucher au code.
+postgres:
+  enabled: true
+  storage: 1Gi
+  storageClassName: ""                # "" = StorageClass par défaut ("standard" sur Minikube)
+  password: changeme-112              # ⚠️ démo uniquement

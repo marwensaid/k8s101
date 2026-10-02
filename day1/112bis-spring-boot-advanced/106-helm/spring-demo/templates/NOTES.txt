@@ -1,0 +1,14 @@
+☕ spring-demo {{ .Chart.Version }} (app {{ .Chart.AppVersion }}) déployé dans le namespace {{ .Release.Namespace }}.
+
+  kubectl -n {{ .Release.Namespace }} get pods -l app.kubernetes.io/instance={{ .Release.Name }}
+  helm test {{ .Release.Name }} -n {{ .Release.Namespace }}
+{{- if .Values.ingress.enabled }}
+
+  Ingress : http://{{ .Values.ingress.host }}/api/products  et  /api/orders
+{{- end }}
+
+Briques activées :
+  ServiceMonitor  {{ .Values.metrics.serviceMonitor.enabled }}   (109)
+  NetworkPolicy   {{ .Values.security.networkPolicy.enabled }}   (110)   hardened {{ .Values.security.hardened }}
+  HPA catalog     {{ .Values.catalog.autoscaling.enabled }}   (111)
+  PostgreSQL      {{ .Values.postgres.enabled }}   (112)

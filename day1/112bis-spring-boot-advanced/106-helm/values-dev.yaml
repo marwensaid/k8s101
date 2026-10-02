@@ -1,0 +1,4 @@
+# Environnement de développement : 1 réplica, moins de ressources
+catalog: { replicaCount: 1, env: { CATALOG_ENVIRONMENT: dev }, resources: { requests: { cpu: 100m, memory: 192Mi } } }
+order:   { replicaCount: 1, resources: { requests: { cpu: 100m, memory: 192Mi } } }
+ingress: { host: spring-dev.local }

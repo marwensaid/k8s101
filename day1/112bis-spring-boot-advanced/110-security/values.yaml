@@ -1,0 +1,12 @@
+# Module 110 : durcissement de l'application
+security:
+  hardened: true              # Pod : runAsNonRoot/runAsUser 10001/seccomp RuntimeDefault
+                              # Conteneur : readOnlyRootFilesystem, allowPrivilegeEscalation false, drop ALL
+                              # (+ emptyDir monté sur /tmp : la JVM a besoin d'écrire)
+  serviceAccount:
+    create: true              # un ServiceAccount dédié, automountServiceAccountToken: false
+  networkPolicy:
+    enabled: true             # default-deny puis flux explicites :
+                              #   ingress-nginx → catalog/order ; order → catalog ; order → postgres ;
+                              #   monitoring → /actuator/prometheus ; tous → DNS
+    ingressNamespace: ingress-nginx

@@ -1,0 +1,40 @@
+spring:
+  application:
+    name: order-service
+  datasource:
+    # Par défaut : H2 en mémoire (chaque Pod a sa propre base, voir exercice 3 du 105bis).
+    # Module 112 : surcharger SPRING_DATASOURCE_URL / USERNAME / PASSWORD pour pointer sur PostgreSQL.
+    url: jdbc:h2:mem:orders
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: update            # crée la table "orders" au démarrage (suffisant pour un TD)
+    open-in-view: false
+
+server:
+  port: 8080
+  shutdown: graceful
+
+catalog:
+  url: http://localhost:8080   # surchargé par CATALOG_URL dans la ConfigMap (http://catalog:8080)
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus   # /actuator/prometheus pour le module 109
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always
+      group:
+        readiness:
+          include: readinessState,catalog,db   # NotReady si le catalogue OU la base sont injoignables
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true   # histogramme => histogram_quantile() dans Grafana (109)
+    tags:
+      application: ${spring.application.name}

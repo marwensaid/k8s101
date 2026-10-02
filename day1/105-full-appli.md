@@ -546,7 +546,7 @@ kubectl delete namespace demo-app
 
 <div align="center">
 
-**[⬅️ 104](./104-config-secrets.md)** · **[🏠 Sommaire](../README.md)** · **[➡️ Jour 2](../day2/README.md)**
+**[⬅️ 104](./104-configmaps-secrets.md)** · **[🏠 Sommaire](../README.md)** · **[➡️ 105bis](./105bis-spring-boot.md)**
 
 <sub>🎉 Félicitations, vous avez déployé votre première application complète sur Kubernetes !</sub>
 

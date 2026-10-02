@@ -1,0 +1,14 @@
+# Module 111 : HPA sur le catalogue + PodDisruptionBudget
+catalog:
+  autoscaling:
+    enabled: true                     # → le chart retire spec.replicas et crée un HorizontalPodAutoscaler
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 50
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }   # l'HPA calcule le % par rapport à la REQUEST : 100m → 50 % = 50m
+    limits:   { cpu: 500m, memory: 512Mi }
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1                     # un drain de nœud ne peut jamais retirer le dernier Pod

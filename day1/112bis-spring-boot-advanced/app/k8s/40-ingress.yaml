@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: spring-demo
+  namespace: spring-demo
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: spring.local
+      http:
+        paths:
+          # Pas de rewrite : les deux services servent déjà leurs routes sous /api/...
+          - path: /api/products
+            pathType: Prefix
+            backend:
+              service:
+                name: catalog
+                port:
+                  name: http
+          - path: /api/orders
+            pathType: Prefix
+            backend:
+              service:
+                name: order
+                port:
+                  name: http

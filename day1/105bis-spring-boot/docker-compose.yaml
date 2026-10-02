@@ -1,0 +1,33 @@
+# Lance les deux services ensemble, sans Kubernetes.
+# Chaque service est buildé par son Dockerfile multi-stage : Java/Maven ne sont pas requis sur la machine.
+#
+#   docker compose up -d --build
+#   curl localhost:8080/api/products
+#   curl -X POST localhost:8082/api/orders -H 'Content-Type: application/json' -d '{"productId":2,"quantity":3}'
+#   docker compose down
+
+services:
+  catalog:
+    build: ./catalog-service
+    image: catalog-service:1.0.0
+    ports:
+      - "8080:8080"
+    environment:
+      CATALOG_ENVIRONMENT: compose
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health/liveness"]
+      interval: 5s
+      timeout: 2s
+      retries: 20
+
+  order:
+    build: ./order-service
+    image: order-service:1.0.0
+    ports:
+      - "8082:8080"
+    environment:
+      # Même principe que la ConfigMap : le nom du service Compose fait office de DNS
+      CATALOG_URL: http://catalog:8080
+    depends_on:
+      catalog:
+        condition: service_healthy

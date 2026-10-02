@@ -1,0 +1,6 @@
+# cp terraform.tfvars.example terraform.tfvars  (terraform.tfvars est ignoré par git)
+namespace    = "spring-tf"
+environment  = "terraform"
+replicas     = 2
+image_tag    = "1.0.0"
+ingress_host = "spring-tf.local"

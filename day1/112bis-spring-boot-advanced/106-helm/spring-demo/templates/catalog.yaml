@@ -1,0 +1,1 @@
+{{- include "spring-demo.component" (dict "root" . "name" "catalog" "svc" .Values.catalog) }}

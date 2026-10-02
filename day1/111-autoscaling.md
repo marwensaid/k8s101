@@ -32,6 +32,7 @@
 - [🩺 Dépannage](#-dépannage)
 - [📝 Mémo](#-mémo)
 - [✅ Checklist](#-checklist)
+- [☕ Fil rouge Spring Boot](#-fil-rouge-spring-boot)
 
 ---
 
@@ -571,6 +572,30 @@ kubectl describe vpa backend -n prod | grep -A3 Target    # ce qu'il faudrait de
 - [ ] Chaque Deployment critique a un PodDisruptionBudget
 - [ ] Je sais lire les logs du Cluster Autoscaler quand un pod reste `Pending`
 - [ ] Mes workers asynchrones scalent sur la file, pas sur le CPU
+
+## ☕ Fil rouge Spring Boot
+
+> Suite du [fil rouge Spring Boot](105bis-spring-boot.md) : tout est dans [`112bis-spring-boot-advanced/`](112bis-spring-boot-advanced/) et s'exécute avec `./deploy.sh <module>` (`deploy`, `test`, `clean` ou les deux par défaut). Prérequis : `./deploy.sh build` une fois, puis `./deploy.sh 106`.
+
+```bash
+cd day1/112bis-spring-boot-advanced
+./deploy.sh 111            # HPA sur catalog (CPU 50 %), PDB sur les deux services, charge puis observation (≈ 5 min)
+```
+
+**Fichiers : [`111-autoscaling/`](112bis-spring-boot-advanced/111-autoscaling/)**
+
+| Fichier | Rôle |
+|---------|------|
+| `values.yaml` | `catalog.autoscaling` (min 2 / max 6 / 50 % CPU, `stabilizationWindowSeconds` 60 à la descente), `requests.cpu: 100m` (indispensable à l'HPA), `podDisruptionBudget.minAvailable: 1` |
+| `load-generator.yaml` | Job de 5 Pods `busybox` qui martèlent `/api/products` pendant 3 min (compatible PSS *restricted*) |
+
+**Ce que vérifie le test :** l'HPA lit le CPU (plus de `<unknown>`), passe au-dessus de 2 réplicas sous charge, puis redescend à 2 une fois le Job supprimé.
+
+```bash
+kubectl -n spring-helm get hpa -w          # dans un 2ᵉ terminal pendant le test
+kubectl -n spring-helm describe hpa demo-catalog | tail -20
+kubectl -n spring-helm get pdb                # ce que tolère un drain de nœud
+```
 
 <div align="center">
 

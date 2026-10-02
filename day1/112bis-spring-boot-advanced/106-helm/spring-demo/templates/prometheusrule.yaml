@@ -1,0 +1,39 @@
+{{- /* Module 109 : alertes */ -}}
+{{- if .Values.metrics.prometheusRule.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ .Release.Name }}-spring-demo
+  labels:
+    {{- include "spring-demo.labels" (dict "root" . "name" "spring-demo") | nindent 4 }}
+    {{- with .Values.metrics.prometheusRule.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  groups:
+    - name: spring-demo
+      rules:
+        - alert: SpringDemoHighErrorRate
+          expr: |
+            sum(rate(http_server_requests_seconds_count{namespace="{{ .Release.Namespace }}", status=~"5.."}[2m]))
+              /
+            sum(rate(http_server_requests_seconds_count{namespace="{{ .Release.Namespace }}"}[2m])) > 0.05
+          for: 2m
+          labels: { severity: warning }
+          annotations:
+            summary: "Plus de 5 % d'erreurs HTTP 5xx sur spring-demo"
+        - alert: SpringDemoOrderNotReady
+          expr: |
+            kube_deployment_status_replicas_available{namespace="{{ .Release.Namespace }}", deployment="{{ .Release.Name }}-order"} == 0
+          for: 1m
+          labels: { severity: critical }
+          annotations:
+            summary: "Aucun Pod order prêt : le catalogue est-il tombé ?"
+        - alert: SpringDemoNoOrders
+          expr: |
+            sum(increase(orders_placed_total{namespace="{{ .Release.Namespace }}", outcome="success"}[10m])) == 0
+          for: 10m
+          labels: { severity: info }
+          annotations:
+            summary: "Aucune commande depuis 10 minutes"
+{{- end }}

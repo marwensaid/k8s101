@@ -1,0 +1,32 @@
+# `helm test <release>` : vérifie la chaîne complète order → catalog depuis l'intérieur du cluster
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ .Release.Name }}-test-api
+  labels:
+    {{- include "spring-demo.labels" (dict "root" . "name" "test") | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": hook-succeeded
+spec:
+  restartPolicy: Never
+  # Conforme au profil PSS "restricted" (module 110) : l'image curl tourne déjà en uid 100
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 100                     # uid "curl_user" (runAsNonRoot exige un uid numérique)
+    seccompProfile: { type: RuntimeDefault }
+  containers:
+    - name: curl
+      image: curlimages/curl:8.10.1
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities: { drop: ["ALL"] }
+      command: ["sh", "-ec"]
+      args:
+        - |
+          set -x
+          curl -fsS http://{{ .Release.Name }}-catalog:8080/api/products | grep -q '"Mug Helm"'
+          curl -fsS -X POST http://{{ .Release.Name }}-order:8080/api/orders \
+            -H 'Content-Type: application/json' -d '{"productId":2,"quantity":1}' | grep -q '"productName":"Mug Helm"'
+          curl -fsS http://{{ .Release.Name }}-order:8080/actuator/health/readiness | grep -q '"status":"UP"'
+          echo "✅ spring-demo OK"

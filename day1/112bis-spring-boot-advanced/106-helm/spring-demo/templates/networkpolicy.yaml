@@ -1,0 +1,121 @@
+{{- /* Module 110 : deny-all + autorisations explicites */ -}}
+{{- if .Values.security.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-default-deny
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+# Tout le monde a besoin du DNS
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-allow-dns
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: kube-system }
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+---
+# Les Pods de test (helm test, générateur de charge du 111) : sortie libre
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-allow-test-egress
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: test }
+  policyTypes: [Egress]
+  egress:
+    - {}
+---
+# catalog ← order, ← ingress-nginx, ← pods de test
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-catalog
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "spring-demo.selectorLabels" (dict "root" . "name" "catalog") | nindent 6 }}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "spring-demo.selectorLabels" (dict "root" . "name" "order") | nindent 14 }}
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: test }
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: {{ .Values.security.networkPolicy.ingressNamespace }} }
+        {{- if .Values.metrics.serviceMonitor.enabled }}
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: monitoring }
+        {{- end }}
+      ports:
+        - { protocol: TCP, port: 8080 }
+---
+# order ← ingress-nginx, ← pods de test ; order → catalog (et → postgres si activé)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-order
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "spring-demo.selectorLabels" (dict "root" . "name" "order") | nindent 6 }}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: test }
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: {{ .Values.security.networkPolicy.ingressNamespace }} }
+        {{- if .Values.metrics.serviceMonitor.enabled }}
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: monitoring }
+        {{- end }}
+      ports:
+        - { protocol: TCP, port: 8080 }
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "spring-demo.selectorLabels" (dict "root" . "name" "catalog") | nindent 14 }}
+      ports:
+        - { protocol: TCP, port: 8080 }
+    {{- if .Values.postgres.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "spring-demo.selectorLabels" (dict "root" . "name" "postgres") | nindent 14 }}
+      ports:
+        - { protocol: TCP, port: 5432 }
+    {{- end }}
+{{- if .Values.postgres.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-postgres
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "spring-demo.selectorLabels" (dict "root" . "name" "postgres") | nindent 6 }}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "spring-demo.selectorLabels" (dict "root" . "name" "order") | nindent 14 }}
+      ports:
+        - { protocol: TCP, port: 5432 }
+{{- end }}
+{{- end }}

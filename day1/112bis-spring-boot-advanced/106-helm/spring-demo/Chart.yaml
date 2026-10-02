@@ -1,0 +1,7 @@
+apiVersion: v2
+name: spring-demo
+description: catalog-service + order-service (fil rouge Spring Boot des modules 106 → 112)
+type: application
+version: 0.1.0        # version du CHART (à incrémenter à chaque changement de template)
+appVersion: "1.0.0"   # version de l'APPLICATION = tag d'image par défaut
+keywords: [spring-boot, k8s101]

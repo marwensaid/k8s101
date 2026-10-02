@@ -1,0 +1,27 @@
+# kube-prometheus-stack allégé pour Minikube :
+#   helm upgrade --install monitoring prometheus-community/kube-prometheus-stack -n monitoring --create-namespace -f ce-fichier
+prometheus:
+  prometheusSpec:
+    retention: 2h
+    resources:
+      requests: { cpu: 100m, memory: 512Mi }
+    # Par défaut Prometheus ne regarde QUE les ServiceMonitor/PrometheusRule portant le label de la release.
+    # false = découvrir tous ceux du cluster (plus simple en formation).
+    serviceMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+
+alertmanager:
+  enabled: true
+
+grafana:
+  adminPassword: admin
+  sidecar:
+    dashboards:
+      enabled: true
+      searchNamespace: ALL            # charge les ConfigMaps grafana_dashboard=1 de tous les namespaces
+
+# Composants du control plane inaccessibles sur Minikube : on évite des targets DOWN inutiles
+kubeControllerManager: { enabled: false }
+kubeScheduler:         { enabled: false }
+kubeProxy:             { enabled: false }
+kubeEtcd:              { enabled: false }

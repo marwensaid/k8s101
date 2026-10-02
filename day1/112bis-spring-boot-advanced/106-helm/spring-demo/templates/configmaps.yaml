@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-catalog
+  labels:
+    {{- include "spring-demo.labels" (dict "root" . "name" "catalog") | nindent 4 }}
+data:
+  {{- range $k, $v := .Values.catalog.env }}
+  {{ $k }}: {{ $v | quote }}
+  {{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-order
+  labels:
+    {{- include "spring-demo.labels" (dict "root" . "name" "order") | nindent 4 }}
+data:
+  # DNS interne du Service catalog, dérivé du nom de la release
+  CATALOG_URL: http://{{ .Release.Name }}-catalog:8080
+  {{- if .Values.postgres.enabled }}
+  SPRING_DATASOURCE_URL: jdbc:postgresql://{{ .Release.Name }}-postgres:5432/{{ .Values.postgres.database }}
+  {{- end }}
+  {{- range $k, $v := .Values.order.env }}
+  {{ $k }}: {{ $v | quote }}
+  {{- end }}

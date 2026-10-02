@@ -32,6 +32,7 @@
 - [🩺 Dépannage](#-dépannage)
 - [📝 Mémo](#-mémo)
 - [✅ Checklist](#-checklist)
+- [☕ Fil rouge Spring Boot](#-fil-rouge-spring-boot)
 
 ---
 
@@ -660,6 +661,28 @@ trivy image --severity HIGH,CRITICAL mon-image:tag                          # CV
 - [ ] Trivy bloque la CI sur les CVE critiques
 - [ ] Mes images ont un tag figé, pas `:latest`
 - [ ] J'ai lancé `kube-bench` au moins une fois et lu le rapport
+
+## ☕ Fil rouge Spring Boot
+
+> Suite du [fil rouge Spring Boot](105bis-spring-boot.md) : tout est dans [`112bis-spring-boot-advanced/`](112bis-spring-boot-advanced/) et s'exécute avec `./deploy.sh <module>` (`deploy`, `test`, `clean` ou les deux par défaut). Prérequis : `./deploy.sh build` une fois, puis `./deploy.sh 106`.
+
+```bash
+cd day1/112bis-spring-boot-advanced
+./deploy.sh 110            # PSS restricted sur le namespace, securityContext durci, NetworkPolicies, RBAC lecture seule
+```
+
+**Fichiers : [`110-security/`](112bis-spring-boot-advanced/110-security/)**
+
+| Fichier | Rôle |
+|---------|------|
+| `values.yaml` | `security.hardened: true` → `runAsNonRoot`, `runAsUser: 10001`, `readOnlyRootFilesystem` (+ `emptyDir` sur `/tmp` pour la JVM), `capabilities: drop ALL`, `seccompProfile: RuntimeDefault` ; `security.networkPolicy.enabled: true` → default-deny + flux autorisés (ingress-nginx → order → catalog, monitoring, DNS) |
+| `rbac-readonly.yaml` | ServiceAccount `dev-readonly` + Role/RoleBinding `get/list/watch` sans accès aux Secrets |
+| `scan-images.sh` | `trivy image` sur les deux images (échoue sur CVE HIGH/CRITICAL corrigeables) |
+
+**Ce que vérifie le test :** UID 10001, `touch /app/x` → *Read-only file system*, un Pod `nginx` root refusé par PSS, `order → catalog` OK mais `catalog → order` bloqué par NetworkPolicy (si CNI Calico/Cilium), `kubectl auth can-i … --as=system:serviceaccount:spring-helm:dev-readonly`.
+
+> [!NOTE]
+> Les NetworkPolicies ne sont appliquées que si le CNI les supporte : `minikube start --cni=calico`. Sans cela, `deploy.sh` affiche un avertissement et saute ce test.
 
 <div align="center">
 

@@ -32,6 +32,7 @@
 - [🩺 Dépannage](#-dépannage)
 - [📝 Mémo](#-mémo)
 - [✅ Checklist](#-checklist)
+- [☕ Fil rouge Spring Boot](#-fil-rouge-spring-boot)
 
 ---
 
@@ -645,8 +646,30 @@ kubectl describe pvc <nom> -n prod              # pourquoi ça bloque
 - [ ] J'ai une sauvegarde **hors cluster** de mes données critiques
 - [ ] Je sais lire `kubectl describe pvc` pour un `Pending`
 
+## ☕ Fil rouge Spring Boot
+
+> Suite du [fil rouge Spring Boot](105bis-spring-boot.md) : tout est dans [`112bis-spring-boot-advanced/`](112bis-spring-boot-advanced/) et s'exécute avec `./deploy.sh <module>` (`deploy`, `test`, `clean` ou les deux par défaut). Prérequis : `./deploy.sh build` une fois, puis `./deploy.sh 106`.
+
+Jusqu'ici `order-service` stocke ses commandes dans **H2 en mémoire** : chaque Pod a sa propre base et tout disparaît au redémarrage. Ce module branche un **PostgreSQL en StatefulSet** avec un PVC.
+
+```bash
+cd day1/112bis-spring-boot-advanced
+./deploy.sh 112
+```
+
+**Fichiers : [`112-storage/values.yaml`](112bis-spring-boot-advanced/112-storage/values.yaml)** → `postgres.enabled: true` : le chart crée un Secret, un Service headless, un StatefulSet `demo-postgres` avec `volumeClaimTemplates` (1 Gi), et injecte `SPRING_DATASOURCE_URL` + identifiants dans `order` (template `postgres.yaml` du chart).
+
+**Ce que vérifie le test :** PVC `data-demo-postgres-0` *Bound*, readiness d'order qui annonce `"database":"PostgreSQL"`, les 2 Pods order voient le **même** nombre de commandes, et après `kubectl delete pod demo-postgres-0` les commandes sont toujours là sur le même PVC.
+
+```bash
+kubectl -n spring-helm get pvc,pv
+kubectl -n spring-helm exec demo-postgres-0 -- psql -U demo -d orders -c 'select * from orders;'
+./deploy.sh 112 clean      # retour à H2, PVC supprimé
+./deploy.sh all clean      # tout nettoyer (105 → 112)
+```
+
 <div align="center">
 
-**➡️ Module suivant : 113 — CI/CD : livrer sur Kubernetes avec GitOps**
+**➡️ Module suivant : 113 — CI/CD : livrer sur Kubernetes avec GitOps** · *ou le TD ☕ [112bis — Spring Boot de Helm au stockage](112bis-spring-boot-advanced/README.md)*
 
 </div>

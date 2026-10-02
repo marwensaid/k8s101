@@ -32,6 +32,7 @@
 - [🩺 Dépannage](#-dépannage)
 - [📝 Mémo](#-mémo)
 - [✅ Checklist](#-checklist)
+- [☕ Fil rouge Spring Boot](#-fil-rouge-spring-boot)
 
 ---
 
@@ -643,6 +644,31 @@ kube_pod_status_phase{phase!="Running"} == 1                     # pods en souff
 - [ ] Alertmanager envoie vers Slack (ou un webhook de test)
 - [ ] Mon application expose `/metrics` et est **UP** dans `/targets`
 - [ ] Je connais les 4 signaux dorés : trafic, erreurs, latence, saturation
+
+## ☕ Fil rouge Spring Boot
+
+> Suite du [fil rouge Spring Boot](105bis-spring-boot.md) : tout est dans [`112bis-spring-boot-advanced/`](112bis-spring-boot-advanced/) et s'exécute avec `./deploy.sh <module>` (`deploy`, `test`, `clean` ou les deux par défaut). Prérequis : `./deploy.sh build` une fois, puis `./deploy.sh 106`.
+
+Les deux services exposent déjà `/actuator/prometheus` (Micrometer) et un compteur métier `orders_placed_total{outcome="success|rejected"}`.
+
+```bash
+cd day1/112bis-spring-boot-advanced
+./deploy.sh 109            # installe kube-prometheus-stack (ns monitoring) + active metrics.* dans le chart
+kubectl -n monitoring port-forward svc/monitoring-grafana 3000:80      # admin / admin → dashboard « Spring Demo »
+kubectl -n monitoring port-forward svc/monitoring-kube-prometheus-prometheus 9090
+```
+
+**Fichiers : [`109-observability/`](112bis-spring-boot-advanced/109-observability/)**
+
+| Fichier | Rôle |
+|---------|------|
+| `values.yaml` | `metrics.serviceMonitor.enabled`, `metrics.prometheusRule.enabled` → le chart génère `ServiceMonitor` + `PrometheusRule` |
+| `kube-prometheus-stack-values.yaml` | Stack allégée pour Minikube ; `serviceMonitorSelectorNilUsesHelmValues: false` pour découvrir nos moniteurs |
+| `grafana-dashboard.yaml` | ConfigMap labellisée `grafana_dashboard=1` → dashboard auto-provisionné (RPS, p95, commandes/min) |
+
+**Ce que vérifie le test :** targets `up` pour catalog et order, `sum(orders_placed_total) > 0` après quelques `POST /api/orders`, règle `SpringDemoOrderNotReady` chargée, dashboard présent.
+
+> Essayez : `./deploy.sh 105` puis `kubectl -n spring-demo scale deploy/catalog --replicas=0` et regardez l'alerte passer *Pending* → *Firing* dans Prometheus.
 
 <div align="center">
 

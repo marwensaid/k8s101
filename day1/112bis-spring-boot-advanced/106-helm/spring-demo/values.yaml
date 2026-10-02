@@ -1,0 +1,82 @@
+# ──────────────────────────────────────────────────────────────────────────────
+#  Values par défaut du chart spring-demo.
+#  Tout ce qui est "enabled: false" ici est activé module par module (109 → 112)
+#  via les fichiers ../../1xx-*/values.yaml : UN chart, plusieurs étapes.
+# ──────────────────────────────────────────────────────────────────────────────
+
+image:
+  pullPolicy: IfNotPresent          # images buildées dans le Docker de Minikube
+
+# ── 106 : les deux micro-services ────────────────────────────────────────────
+catalog:
+  image:
+    repository: catalog-service
+    tag: ""                         # vide → appVersion du chart
+  replicaCount: 2
+  env:
+    CATALOG_ENVIRONMENT: helm       # lu par /api/products/whoami → prouve que la ConfigMap est passée
+  resources:
+    requests: { cpu: 250m, memory: 256Mi }
+    limits:   { memory: 512Mi }
+  autoscaling:                      # 111
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 50
+
+order:
+  image:
+    repository: order-service
+    tag: ""
+  replicaCount: 2
+  env: {}
+  resources:
+    requests: { cpu: 250m, memory: 256Mi }
+    limits:   { memory: 512Mi }
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 50
+
+probes:
+  startupFailureThreshold: 30       # 30 × 2 s = 60 s max pour démarrer la JVM
+
+ingress:
+  enabled: true
+  className: nginx
+  host: spring.local
+
+# ── 109 : observabilité (nécessite les CRD de kube-prometheus-stack) ─────────
+metrics:
+  serviceMonitor:
+    enabled: false
+    interval: 15s
+    labels: {}                      # ex. release: monitoring
+  prometheusRule:
+    enabled: false
+    labels: {}
+
+# ── 110 : sécurité ───────────────────────────────────────────────────────────
+security:
+  hardened: false                   # runAsNonRoot 10001, rootfs RO, drop ALL, seccomp
+  serviceAccount:
+    create: false                   # SA dédié sans token automonté
+  networkPolicy:
+    enabled: false                  # default-deny + flux explicites
+    ingressNamespace: ingress-nginx
+
+# ── 111 : disponibilité ──────────────────────────────────────────────────────
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+
+# ── 112 : stockage ───────────────────────────────────────────────────────────
+postgres:
+  enabled: false                    # false → order-service utilise H2 en mémoire
+  image: postgres:16-alpine
+  database: orders
+  username: orders
+  password: changeme                # ⚠️ à surcharger (--set / fichier non commité / Secret externe)
+  storage: 1Gi
+  storageClassName: ""              # "" → StorageClass par défaut (standard sur Minikube)

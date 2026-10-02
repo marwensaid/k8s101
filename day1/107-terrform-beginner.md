@@ -31,6 +31,7 @@
 - [🩺 Dépannage](#-dépannage)
 - [📝 Mémo](#-mémo)
 - [✅ Checklist](#-checklist)
+- [☕ Fil rouge Spring Boot](#-fil-rouge-spring-boot)
 
 ---
 
@@ -677,6 +678,33 @@ output "o" { value = x_type.name.id }
 - [ ] Un module écrit et appelé deux fois
 - [ ] Une `helm_release` déployée avec Terraform
 - [ ] `.gitignore` contient `.terraform/`, `*.tfstate*`, `*.tfvars` sensibles
+
+## ☕ Fil rouge Spring Boot
+
+> Suite du [fil rouge Spring Boot](105bis-spring-boot.md) : tout est dans [`112bis-spring-boot-advanced/`](112bis-spring-boot-advanced/) et s'exécute avec `./deploy.sh <module>` (`deploy`, `test`, `clean` ou les deux par défaut). Prérequis : `./deploy.sh build` une fois, puis `./deploy.sh 106`.
+
+```bash
+cd day1/112bis-spring-boot-advanced
+./deploy.sh 107            # tofu/terraform init + apply, puis tests
+```
+
+**Fichiers : [`107-terraform/`](112bis-spring-boot-advanced/107-terraform/)**
+
+| Fichier | Rôle |
+|---------|------|
+| `versions.tf` | Providers `kubernetes` et `helm`, pointés sur le contexte `minikube` |
+| `main.tf` | `kubernetes_namespace_v1` (avec labels Pod Security) + `helm_release` du chart local `../106-helm/spring-demo` |
+| `variables.tf` / `terraform.tfvars.example` | `namespace`, `environment`, `replicas`, `image_tag` → injectés dans les values du chart via `set {}` |
+| `outputs.tf` | URL interne des services |
+
+**Ce que vérifie `./deploy.sh 107 test` :** 2 ressources dans le state, `plan` idempotent (*No changes*), le label PSS posé par Terraform, la variable `environment` visible dans `/api/products/whoami`, puis `apply -var replicas=3` qui scale les deux Deployments.
+
+```bash
+cd 107-terraform
+tofu plan -var replicas=1          # lire un plan de changement
+tofu state list
+tofu destroy -auto-approve         # ou ./deploy.sh 107 clean
+```
 
 <div align="center">
 

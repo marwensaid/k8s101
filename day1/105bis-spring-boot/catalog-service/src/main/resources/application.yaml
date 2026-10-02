@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: catalog-service
+
+server:
+  port: 8080
+  shutdown: graceful          # laisse finir les requêtes en cours lors d'un rolling update
+
+catalog:
+  environment: local          # surchargé par CATALOG_ENVIRONMENT dans la ConfigMap
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus   # /actuator/prometheus pour le module 109
+  endpoint:
+    health:
+      probes:
+        enabled: true         # active /actuator/health/liveness et /readiness
+      show-details: always
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true   # histogramme => histogram_quantile() dans Grafana (109)
+    tags:
+      application: ${spring.application.name}

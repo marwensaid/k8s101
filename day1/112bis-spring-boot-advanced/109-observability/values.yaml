@@ -1,0 +1,13 @@
+# Module 109 : le chart génère un ServiceMonitor (scrape /actuator/prometheus toutes les 15 s)
+# et une PrometheusRule (alertes). Le label release=monitoring correspond au nom de la release
+# kube-prometheus-stack — c'est ainsi que l'opérateur Prometheus découvre nos objets.
+metrics:
+  serviceMonitor:
+    enabled: true
+    interval: 15s
+    labels:
+      release: monitoring
+  prometheusRule:
+    enabled: true
+    labels:
+      release: monitoring

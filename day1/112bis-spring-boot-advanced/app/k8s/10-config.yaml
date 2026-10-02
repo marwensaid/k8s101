@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: catalog-config
+  namespace: spring-demo
+data:
+  # Spring Boot lit CATALOG_ENVIRONMENT comme la propriété catalog.environment
+  CATALOG_ENVIRONMENT: kubernetes
+  LOGGING_LEVEL_FR_K8S101: INFO
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: order-config
+  namespace: spring-demo
+data:
+  # DNS interne : <service>.<namespace>.svc.cluster.local, ou simplement <service> dans le même namespace
+  CATALOG_URL: http://catalog:8080
+  LOGGING_LEVEL_FR_K8S101: INFO
