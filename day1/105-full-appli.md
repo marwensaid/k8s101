@@ -299,7 +299,7 @@ spec:
 </details>
 
 > [!TIP]
-> `envFrom` injecte **toutes** les clés du ConfigMap/Secret en variables d'environnement d'un coup. Un vrai backend se connecterait à la base via le DNS interne : `postgres.demo-app.svc.cluster.local` (ou simplement `postgres`). Ici `whoami` se contente d'afficher ses variables d'environnement sur `/api`, ce qui permet de vérifier l'injection.
+> `envFrom` injecte **toutes** les clés du ConfigMap/Secret en variables d'environnement d'un coup. Un vrai backend se connecterait à la base via le DNS interne : `postgres.demo-app.svc.cluster.local` (ou simplement `postgres`). Ici `whoami` se contente d'afficher ses variables d'environnement sur `/api?env=true`, ce qui permet de vérifier l'injection.
 
 ---
 
@@ -403,7 +403,11 @@ echo "$(minikube ip) demo.local" | sudo tee -a /etc/hosts
 ```
 
 > [!WARNING]
-> **macOS avec le driver Docker** : l'IP `minikube ip` (ex. `192.168.49.2`) n'est pas joignable depuis l'hôte. Utilisez plutôt `127.0.0.1 demo.local` dans `/etc/hosts` et lancez `minikube tunnel` dans un terminal dédié (laissez-le ouvert).
+> **macOS avec le driver Docker** : l'IP `minikube ip` (ex. `192.168.49.2`) n'est pas joignable depuis l'hôte. Utilisez plutôt `127.0.0.1 demo.local` dans `/etc/hosts` et lancez `minikube tunnel` dans un terminal dédié (laissez-le ouvert et saisissez le mot de passe sudo qu'il demande pour les ports 80/443).
+>
+> **Piège macOS** : les noms en `.local` passent par Bonjour/mDNS, ce qui ajoute ~5 s de résolution à chaque requête (`curl` peut partir en timeout). Contournements : utiliser `curl -m 20`, ou `curl --resolve demo.local:80:127.0.0.1 http://demo.local/`, ou choisir un autre suffixe (`demo.test`).
+>
+> **Alternative sans sudo** : `kubectl port-forward -n ingress-nginx svc/ingress-nginx-controller 8080:80` puis `curl http://demo.local:8080/`.
 
 ---
 
@@ -435,7 +439,8 @@ kubectl get all,cm,secret,pvc,ingress -n demo-app
 # Tester la chaîne complète
 curl http://demo.local/                 # page d'accueil nginx
 curl http://demo.local/api/health       # 200 OK
-curl http://demo.local/api              # hostname du pod + variables d'env (DB_HOST, LOG_LEVEL…)
+curl http://demo.local/api              # hostname du pod + en-têtes HTTP
+curl "http://demo.local/api?env=true"   # idem + variables d'env injectées (DB_HOST, LOG_LEVEL…)
 
 # Tester la connectivité interne vers postgres (whoami n'a pas de shell → pod temporaire)
 kubectl run -n demo-app -it --rm nettest --image=busybox:1.36 --restart=Never -- nc -zv postgres 5432
@@ -477,7 +482,7 @@ for i in $(seq 1 10); do curl -s http://demo.local/api | grep Hostname; done
 <summary>🟡 <b>Exercice 2 — Changer la configuration</b></summary>
 
 Modifiez `LOG_LEVEL` en `debug` dans le ConfigMap.
-Les Pods voient-ils le changement (`curl http://demo.local/api | grep LOG_LEVEL`) ? Pourquoi ? Comment forcer la prise en compte ?
+Les Pods voient-ils le changement (`curl "http://demo.local/api?env=true" | grep LOG_LEVEL`) ? Pourquoi ? Comment forcer la prise en compte ?
 
 > 💡 Indice : `kubectl rollout restart deploy/backend`
 </details>
