@@ -236,6 +236,9 @@ spec:
 
 ## 3️⃣ Backend (API)
 
+> [!NOTE]
+> Pour se concentrer sur Kubernetes, on utilise des **images publiques prêtes à l'emploi** : `traefik/whoami` pour le backend (répond sur `/`, `/api` et `/health` en affichant son hostname) et `nginx` pour le frontend. Vous construirez votre propre backend dans le [TD 105bis](./105bis-spring-boot.md).
+
 <details open>
 <summary>📄 <code>30-backend.yaml</code></summary>
 
@@ -259,9 +262,9 @@ spec:
     spec:
       containers:
         - name: api
-          image: ghcr.io/your-org/demo-api:1.0.0
+          image: traefik/whoami:v1.10
           ports:
-            - containerPort: 8080
+            - containerPort: 80
           envFrom:
             - configMapRef:
                 name: app-config
@@ -269,13 +272,13 @@ spec:
                 name: app-secret
           readinessProbe:
             httpGet:
-              path: /health/ready
-              port: 8080
+              path: /health
+              port: 80
             initialDelaySeconds: 5
           livenessProbe:
             httpGet:
-              path: /health/live
-              port: 8080
+              path: /health
+              port: 80
             initialDelaySeconds: 15
           resources:
             requests: { cpu: 100m, memory: 128Mi }
@@ -291,12 +294,12 @@ spec:
     app: backend
   ports:
     - port: 80
-      targetPort: 8080
+      targetPort: 80
 ```
 </details>
 
 > [!TIP]
-> `envFrom` injecte **toutes** les clés du ConfigMap/Secret en variables d'environnement d'un coup. Le backend se connecte à la base via le DNS interne : `postgres.demo-app.svc.cluster.local` (ou simplement `postgres`).
+> `envFrom` injecte **toutes** les clés du ConfigMap/Secret en variables d'environnement d'un coup. Un vrai backend se connecterait à la base via le DNS interne : `postgres.demo-app.svc.cluster.local` (ou simplement `postgres`). Ici `whoami` se contente d'afficher ses variables d'environnement sur `/api`, ce qui permet de vérifier l'injection.
 
 ---
 
@@ -325,7 +328,7 @@ spec:
     spec:
       containers:
         - name: web
-          image: ghcr.io/your-org/demo-front:1.0.0
+          image: nginx:1.26-alpine
           ports:
             - containerPort: 80
           env:
@@ -399,6 +402,9 @@ minikube addons enable ingress
 echo "$(minikube ip) demo.local" | sudo tee -a /etc/hosts
 ```
 
+> [!WARNING]
+> **macOS avec le driver Docker** : l'IP `minikube ip` (ex. `192.168.49.2`) n'est pas joignable depuis l'hôte. Utilisez plutôt `127.0.0.1 demo.local` dans `/etc/hosts` et lancez `minikube tunnel` dans un terminal dédié (laissez-le ouvert).
+
 ---
 
 ## 6️⃣ Déployer & vérifier
@@ -427,11 +433,12 @@ frontend-6f4c8b5d9-p5w3z    1/1     Running   0          40s
 kubectl get all,cm,secret,pvc,ingress -n demo-app
 
 # Tester la chaîne complète
-curl http://demo.local/
-curl http://demo.local/api/health/ready
+curl http://demo.local/                 # page d'accueil nginx
+curl http://demo.local/api/health       # 200 OK
+curl http://demo.local/api              # hostname du pod + variables d'env (DB_HOST, LOG_LEVEL…)
 
-# Tester la connectivité interne backend → postgres
-kubectl exec -n demo-app deploy/backend -- nc -zv postgres 5432
+# Tester la connectivité interne vers postgres (whoami n'a pas de shell → pod temporaire)
+kubectl run -n demo-app -it --rm nettest --image=busybox:1.36 --restart=Never -- nc -zv postgres 5432
 ```
 
 ```mermaid
@@ -462,7 +469,7 @@ Passez le backend à **4 réplicas** et vérifiez que l'Ingress répartit la cha
 
 ```bash
 kubectl scale deploy/backend --replicas=4 -n demo-app
-for i in $(seq 1 10); do curl -s http://demo.local/api/hostname; echo; done
+for i in $(seq 1 10); do curl -s http://demo.local/api | grep Hostname; done
 ```
 </details>
 
@@ -470,7 +477,7 @@ for i in $(seq 1 10); do curl -s http://demo.local/api/hostname; echo; done
 <summary>🟡 <b>Exercice 2 — Changer la configuration</b></summary>
 
 Modifiez `LOG_LEVEL` en `debug` dans le ConfigMap.
-Les Pods voient-ils le changement ? Pourquoi ? Comment forcer la prise en compte ?
+Les Pods voient-ils le changement (`curl http://demo.local/api | grep LOG_LEVEL`) ? Pourquoi ? Comment forcer la prise en compte ?
 
 > 💡 Indice : `kubectl rollout restart deploy/backend`
 </details>
@@ -478,10 +485,10 @@ Les Pods voient-ils le changement ? Pourquoi ? Comment forcer la prise en compte
 <details>
 <summary>🟠 <b>Exercice 3 — Rolling update</b></summary>
 
-Mettez à jour l'image du frontend vers `1.1.0` et observez le rollout :
+Mettez à jour l'image du frontend vers `nginx:1.27-alpine` et observez le rollout :
 
 ```bash
-kubectl set image deploy/frontend web=ghcr.io/your-org/demo-front:1.1.0 -n demo-app
+kubectl set image deploy/frontend web=nginx:1.27-alpine -n demo-app
 kubectl rollout status deploy/frontend -n demo-app
 kubectl rollout history deploy/frontend -n demo-app
 ```
@@ -492,9 +499,16 @@ Puis effectuez un **rollback**.
 <details>
 <summary>🔴 <b>Exercice 4 — Persistance</b></summary>
 
-1. Insérez une ligne dans la base via le backend.
+1. Insérez une ligne dans la base :
+   ```bash
+   kubectl exec -n demo-app deploy/postgres -- psql -U demo -d demo \
+     -c "CREATE TABLE IF NOT EXISTS items(id serial, name text); INSERT INTO items(name) VALUES ('k8s');"
+   ```
 2. Supprimez le Pod PostgreSQL : `kubectl delete pod -l app=postgres`.
-3. Vérifiez que la donnée est toujours là après redémarrage.
+3. Vérifiez que la donnée est toujours là après redémarrage :
+   ```bash
+   kubectl exec -n demo-app deploy/postgres -- psql -U demo -d demo -c "SELECT * FROM items;"
+   ```
 4. Que se passe-t-il si vous supprimez le PVC ?
 </details>
 
