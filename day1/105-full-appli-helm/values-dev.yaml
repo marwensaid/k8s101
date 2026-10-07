@@ -1,0 +1,9 @@
+# Exemple de surcharge pour un environnement étudiant
+backend:
+  replicas: 4
+
+frontend:
+  replicas: 2
+
+ingress:
+  host: demo.test

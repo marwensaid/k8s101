@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "demo-app.labels" . | nindent 4 }}
+data:
+  DB_HOST: {{ .Values.config.dbHost | quote }}
+  DB_PORT: {{ .Values.config.dbPort | quote }}
+  DB_NAME: {{ .Values.config.dbName | quote }}
+  LOG_LEVEL: {{ .Values.config.logLevel | quote }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-secret
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "demo-app.labels" . | nindent 4 }}
+type: Opaque
+stringData:
+  DB_USER: {{ .Values.secret.dbUser | quote }}
+  DB_PASSWORD: {{ .Values.secret.dbPassword | quote }}

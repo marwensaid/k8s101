@@ -1,0 +1,70 @@
+# Namespace / application
+namespace:
+  create: true
+  name: demo-app
+
+# Application configuration
+config:
+  dbHost: postgres
+  dbPort: "5432"
+  dbName: demo
+  logLevel: info
+
+# Kubernetes Secret
+# For a real project, do not commit passwords in clear text.
+secret:
+  dbUser: demo
+  dbPassword: "S3cr3t!"
+
+postgres:
+  replicas: 1
+  image:
+    repository: postgres
+    tag: "16-alpine"
+    pullPolicy: IfNotPresent
+  storage:
+    size: 1Gi
+    accessMode: ReadWriteOnce
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+backend:
+  replicas: 2
+  image:
+    repository: traefik/whoami
+    tag: "v1.10"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+frontend:
+  replicas: 2
+  image:
+    repository: nginx
+    tag: "1.26-alpine"
+    pullPolicy: IfNotPresent
+  apiUrl: /api
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+ingress:
+  enabled: true
+  className: nginx
+  host: demo.local
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
